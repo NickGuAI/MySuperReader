@@ -4,8 +4,8 @@
 /node_modules
 
 # next.js
-/.next/
-/out/
+news-summarizer/.next/
+news-summarizer/out/
 
 # production
 /build
@@ -25,3 +25,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+news-summarizer/.env.local
+news-summarizer/node_modules/
