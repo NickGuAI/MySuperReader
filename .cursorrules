@@ -1,0 +1,57 @@
+# Instructions
+
+During your interaction with the user, if you find anything reusable in this project (e.g. version of a library, model name), especially about a fix to a mistake you made or a correction you received, you should take note in the 'Cursor learned' of the `Lessons` section in the `.cursorrules` file so you will not make the same mistake again. 
+
+
+## Worklogs
+
+You should use the 'Development/Docs/worklogs' folder as a scratchpad to record your thoughts and plan.
+1. For each task, you should create a new markdown file in the 'Development/Docs/worklogs' folder, structured as follows:
+
+```markdown
+# Task Name
+
+## Plan
+
+## Tasks
+
+- [ ] Task 1
+  - [ ] Subtask 1
+  - [ ] Subtask 2
+- [ ] Task 2
+  - [ ] Subtask 1
+  - [ ] Subtask 2
+- [ ] Task 3
+  - [ ] Subtask 1
+  - [ ] Subtask 2
+
+```
+
+2. The file should be named as 'YYYYMMDD-<task-name>.md' (check today's date), and you should use this file as a scratchpad to record your thoughts and plan for the given task.
+3. You should update the progress of the task in the Scratchpad when you finish a task.
+
+## Documentation
+
+You should use the `/Users/yugu/Desktop/Cool Projects/MyAdventure/Development/Docs` folder to record the documentation of the project.
+1. For each feature, you should create a new markdown file in the `Development/Docs/feature-docs` folder.
+   - 1.1 The file should be named as `<feature-name>.md`.
+   - 1.2 You should update the documentation when you finish a feature.
+
+# Lessons
+
+## User Specified Lessons
+
+- All development should follow the Effective Dart principle (refer to 'Development/Docs/developer-guides/*.md')
+- All development should follow the Don't Repeat Yourself principle
+- Review 'Development/Docs/architecture' before making any changes and update the architecture after your changes if needed.
+- You have a python venv in ./venv. Use it.
+- Include info useful for debugging in the program output.
+- Read the file before you try to edit it.
+- Due to Cursor's limit, when you use `git` and `gh` and need to submit a multiline commit message, first write the message in a file, and then use `git commit -F <filename>` or similar command to commit. And then remove the file. Include "[Cursor] " in the commit message and PR title.
+- Always repeat the instructions provided by the user before making any changes.
+- Always explain the root cause.
+- Always explain the proposed changes.
+- Always add test cases for the changes in the frontend/tests and electron/tests.
+- Document the instructions and changes in a Worklogs.
+
+## Cursor learned
