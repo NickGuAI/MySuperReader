@@ -81,9 +81,14 @@ export const inoreaderService = {
    * Initiate OAuth2.0 authentication flow
    * Generates state token and constructs authorization URL
    */
-  async initiateAuth(): Promise<{ authUrl: string; state: string }> {
-    // Generate CSRF protection token
-    const state = uuidv4();
+  async initiateAuth(userId: string): Promise<{ authUrl: string; state: string }> {
+    // Generate CSRF protection token and include userId
+    const stateObj = {
+      csrf: uuidv4(),
+      userId: userId
+    };
+    
+    const state = btoa(JSON.stringify(stateObj));
     
     // Get credentials from Supabase
     const credentials = await getInoreaderCredentials();
@@ -105,8 +110,30 @@ export const inoreaderService = {
   /**
    * Exchange authorization code for access and refresh tokens
    */
-  async exchangeCodeForTokens(code: string, userId: string, state: string): Promise<{ success: boolean; error?: string }> {
+  async exchangeCodeForTokens(code: string, userId: string, state: string): Promise<{ 
+    success: boolean; 
+    error?: string;
+    tokens?: {
+      access_token: string;
+      refresh_token: string;
+      expires_at: string;
+    };
+  }> {
     try {
+      // Check if state contains encoded user info
+      let stateUserId = userId;
+      
+      try {
+        const decodedState = JSON.parse(atob(state));
+        if (decodedState && decodedState.userId) {
+          stateUserId = decodedState.userId;
+          console.log('[Inoreader] Using userId from state:', stateUserId);
+        }
+      } catch (e) {
+        // If decoding fails, use the provided userId
+        console.log('[Inoreader] Using original userId (state decode failed)');
+      }
+      
       // Get credentials from Supabase
       const credentials = await getInoreaderCredentials();
       
@@ -133,17 +160,45 @@ export const inoreaderService = {
       
       const data = await response.json();
       
-      // Calculate token expiration time
-      const expiresAt = Math.floor(Date.now() / 1000) + data.expires_in;
+      // Calculate token expiration time - convert to ISO string instead of Unix timestamp
+      const expiresDate = new Date();
+      expiresDate.setSeconds(expiresDate.getSeconds() + data.expires_in);
       
+      // Return the tokens instead of storing them
+      return { 
+        success: true,
+        tokens: {
+          access_token: data.access_token,
+          refresh_token: data.refresh_token,
+          expires_at: expiresDate.toISOString()
+        }
+      };
+    } catch (error) {
+      console.error('Error exchanging code for tokens:', error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : 'An unexpected error occurred'
+      };
+    }
+  },
+  
+  /**
+   * Store Inoreader tokens in Supabase
+   */
+  async storeTokens(userId: string, tokens: {
+    access_token: string;
+    refresh_token: string;
+    expires_at: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    try {
       // Store tokens in Supabase
       const { error } = await supabase
         .from('inoreader')
         .upsert({
           user_id: userId,
-          access_token: data.access_token,
-          refresh_token: data.refresh_token,
-          expires_at: expiresAt
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          expires_at: tokens.expires_at
         });
       
       if (error) {
@@ -153,7 +208,7 @@ export const inoreaderService = {
       
       return { success: true };
     } catch (error) {
-      console.error('Error exchanging code for tokens:', error);
+      console.error('Error storing tokens:', error);
       return { 
         success: false, 
         error: error instanceof Error ? error.message : 'An unexpected error occurred'
@@ -205,7 +260,8 @@ export const inoreaderService = {
       const newTokens = await response.json();
       
       // Calculate token expiration time
-      const expiresAt = Math.floor(Date.now() / 1000) + newTokens.expires_in;
+      const expiresDate = new Date();
+      expiresDate.setSeconds(expiresDate.getSeconds() + newTokens.expires_in);
       
       // Update tokens in Supabase
       const { error: updateError } = await supabase
@@ -213,7 +269,7 @@ export const inoreaderService = {
         .update({
           access_token: newTokens.access_token,
           refresh_token: newTokens.refresh_token,
-          expires_at: expiresAt
+          expires_at: expiresDate.toISOString()
         })
         .eq('user_id', userId);
       
@@ -249,10 +305,12 @@ export const inoreaderService = {
         return null;
       }
       
-      const now = Math.floor(Date.now() / 1000);
-      
       // Check if token is expired or about to expire (within 5 minutes)
-      if (data.expires_at - now < 300) {
+      const expiresAtDate = new Date(data.expires_at);
+      const now = new Date();
+      const fiveMinutesFromNow = new Date(now.getTime() + 5 * 60 * 1000);
+      
+      if (expiresAtDate < fiveMinutesFromNow) {
         // Token is expired or about to expire, refresh it
         const refreshResult = await this.refreshToken(userId);
         if (!refreshResult.success) {

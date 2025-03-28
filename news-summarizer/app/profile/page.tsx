@@ -45,11 +45,14 @@ export default function ProfilePage() {
     }
   }, [user])
 
-  // Check if user has connected Inoreader
+  // Check if Inoreader is connected
   const checkInoreaderConnection = async () => {
     if (!user) return
     
     try {
+      // First check for pending tokens and sync them
+      await syncPendingTokens()
+      
       const response = await fetch('/api/auth/inoreader', {
         method: 'POST',
         headers: {
@@ -68,6 +71,35 @@ export default function ProfilePage() {
       console.error('Failed to check Inoreader connection:', error)
     } finally {
       setIsChecking(false)
+    }
+  }
+  
+  // Sync pending tokens if they exist
+  const syncPendingTokens = async () => {
+    if (!user) return
+    
+    try {
+      // Check if the cookie exists before making the API call
+      if (document.cookie.includes('inoreader_pending_tokens')) {
+        const response = await fetch('/api/auth/token-sync', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${user.id}`,
+            'X-User-Email': user.email
+          }
+        })
+        
+        if (response.ok) {
+          console.log('Successfully synced pending tokens')
+          // If we synced tokens, we know Inoreader is connected
+          setInoreaderConnected(true)
+        } else {
+          console.error('Failed to sync tokens:', await response.text())
+        }
+      }
+    } catch (error) {
+      console.error('Error syncing pending tokens:', error)
     }
   }
 

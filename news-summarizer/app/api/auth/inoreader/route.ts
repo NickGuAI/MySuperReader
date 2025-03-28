@@ -31,8 +31,8 @@ export async function GET(req: NextRequest) {
       )
     }
     
-    // Generate authorization URL and state token
-    const { authUrl, state } = await inoreaderService.initiateAuth()
+    // Generate authorization URL and state token, now including userId in state
+    const { authUrl, state } = await inoreaderService.initiateAuth(userId)
     
     // Create response with the authUrl
     const response = NextResponse.json({ authUrl })
