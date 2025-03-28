@@ -1,12 +1,16 @@
 # Inoreader Authentication Integration
 
 ## Overview
-This document details the implementation plan for integrating Inoreader's OAuth2.0 authentication into our news summarizer application. This integration will replace the current mock authentication system and allow users to sign in with their Inoreader accounts.
+This document details the implementation plan for integrating Inoreader's OAuth2.0 authentication into our news summarizer application.
+
+This provides a way for user to authenticate and connect their inoreader account, but doesn't replace existing authentication like Google.
+
+Refer to /Users/yugu/Desktop/Cool Projects/MySuperReader/Development/Docs/worklogs/20240711-supabase-google-auth.md for supabase setup
 
 ## User Authentication Flow
 0. All inoreader API calls are handled in /Users/yugu/Desktop/Cool Projects/MySuperReader/news-summarizer/lib/external-services/inoreader-service.ts and hiddne behind server APIs. the cliends only talk to server API through inoreader-service and never direclty with inoreader
 
-1. User clicks "Sign in with Inoreader" button
+1. User clicks "Connect Inoreader" button
    - inoreaderService.initiateAuth() generates CSRF token and constructs authorization URL
    - User is redirected to: https://www.inoreader.com/oauth2/auth with:
      - client_id from env
@@ -27,12 +31,22 @@ This document details the implementation plan for integrating Inoreader's OAuth2
      - POSTs to https://www.inoreader.com/oauth2/token
      - Exchanges code for access & refresh tokens
      - Stores tokens and expiration
+   - Save ACCESS_TOKEN and REFRESH_TOKEN into supabase
+     - Table: inoreader
+       - Columns
+         - id
+         - created_at
+         - access_token
+         - refresh_token
+         - user_id (uuid of authenticated user)
 
 5. inoreaderService.getUserProfile() fetches user info using access token
 
 6. User session is created and they can access personalized feed
    - All subsequent API calls use stored access token
    - Token refresh handled automatically by inoreaderService
+
+7. If token expired, request new ones and update database.
 
 ## Technical Architecture
 
