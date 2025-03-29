@@ -1,38 +1,8 @@
-import type { User, UserPreferences, UserStats } from "@/lib/types"
-import { supabase, isClientSide } from "./supabase"
+import type { User } from "@/lib/types"
 
-/**
- * Authentication service using Supabase
- */
+// Mock authentication service
 export const authService = {
-  /**
-   * Sign in with Google OAuth
-   */
-  async signInWithGoogle(): Promise<{ success: boolean; error?: string }> {
-    try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-      })
-      
-      if (error) {
-        console.error('Error signing in with Google:', error.message)
-        return { success: false, error: error.message }
-      }
-      
-      return { success: true }
-    } catch (error) {
-      console.error('Unexpected error during Google sign-in:', error)
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'An unexpected error occurred' 
-      }
-    }
-  },
-
-  /**
-   * Legacy login method with username/password
-   * Kept for backward compatibility
-   */
+  // Mock login with Inoreader credentials
   async login(username: string, password: string): Promise<{ success: boolean; user?: User; error?: string }> {
     // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
@@ -43,6 +13,7 @@ export const authService = {
     }
 
     // For demo purposes, accept any non-empty credentials
+    // In a real implementation, this would validate against Inoreader API
     if (username.length < 3) {
       return { success: false, error: "Username must be at least 3 characters" }
     }
@@ -51,149 +22,82 @@ export const authService = {
       return { success: false, error: "Password must be at least 6 characters" }
     }
 
-    try {
-      // Use Supabase email/password login
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: username.includes('@') ? username : `${username}@example.com`,
-        password,
-      })
-
-      if (error) {
-        return { success: false, error: error.message }
-      }
-
-      if (!data.user) {
-        return { success: false, error: "Failed to get user information" }
-      }
-
-      // Map Supabase user to our app's User format
-      const user = this.mapSupabaseUser(data.user)
-      return { success: true, user }
-    } catch (error) {
-      console.error('Error during login:', error)
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'An unexpected error occurred'
-      }
-    }
-  },
-
-  /**
-   * Sign out the current user
-   */
-  async logout(): Promise<{ success: boolean; error?: string }> {
-    try {
-      const { error } = await supabase.auth.signOut()
-      
-      if (error) {
-        return { success: false, error: error.message }
-      }
-      
-      return { success: true }
-    } catch (error) {
-      console.error('Error during logout:', error)
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'An unexpected error occurred'
-      }
-    }
-  },
-
-  /**
-   * Get the current authenticated user
-   */
-  async getCurrentUser(): Promise<User | null> {
-    if (!isClientSide()) return null
-
-    try {
-      const { data } = await supabase.auth.getUser()
-      if (!data.user) return null
-      
-      return this.mapSupabaseUser(data.user)
-    } catch (error) {
-      console.error('Failed to get current user:', error)
-      return null
-    }
-  },
-
-  /**
-   * Set up a listener for auth state changes
-   * @param callback Function to call when auth state changes
-   */
-  onAuthStateChange(callback: (user: User | null) => void) {
-    return supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event)
-      
-      if (event === 'SIGNED_IN' && session?.user) {
-        const user = this.mapSupabaseUser(session.user)
-        callback(user)
-      } else if (event === 'SIGNED_OUT') {
-        callback(null)
-      }
-    })
-  },
-
-  /**
-   * Update user preferences
-   */
-  async updateUserPreferences(
-    preferences: Partial<User["preferences"]>,
-  ): Promise<{ success: boolean; user?: User; error?: string }> {
-    try {
-      const { data: userData } = await supabase.auth.getUser()
-      if (!userData.user) {
-        return { success: false, error: "Not logged in" }
-      }
-      
-      const userId = userData.user.id
-      
-      // Store preferences in Supabase user metadata
-      const { data, error } = await supabase.auth.updateUser({
-        data: { preferences }
-      })
-
-      if (error) {
-        return { success: false, error: error.message }
-      }
-
-      if (!data.user) {
-        return { success: false, error: "Failed to update user" }
-      }
-
-      return { success: true, user: this.mapSupabaseUser(data.user) }
-    } catch (error) {
-      console.error('Error updating user preferences:', error)
-      return { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'An unexpected error occurred'
-      }
-    }
-  },
-
-  /**
-   * Maps a Supabase user to our application User type
-   */
-  mapSupabaseUser(supabaseUser: any): User {
-    const metadata = supabaseUser.user_metadata || {}
-    
-    return {
-      id: supabaseUser.id,
-      username: metadata.user_name || supabaseUser.email?.split('@')[0] || 'user',
-      displayName: metadata.full_name || supabaseUser.email?.split('@')[0] || 'User',
-      email: supabaseUser.email || '',
-      avatar: metadata.avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(metadata.full_name || supabaseUser.email?.split('@')[0] || 'User')}`,
-      preferences: (metadata.preferences as UserPreferences) || {
+    // Create a mock user based on the username
+    const user: User = {
+      id: `user-${Date.now()}`,
+      username,
+      displayName: username.charAt(0).toUpperCase() + username.slice(1),
+      email: `${username}@example.com`,
+      avatar: `/placeholder.svg?height=200&width=200`,
+      preferences: {
         categories: ["technology", "science"],
         sources: ["TechCrunch", "Wired"],
         emailDigest: true,
         theme: "light",
       },
-      stats: (metadata.stats as UserStats) || {
-        articlesRead: 0,
-        articlesSaved: 0,
-        summariesGenerated: 0,
+      stats: {
+        articlesRead: Math.floor(Math.random() * 100),
+        articlesSaved: Math.floor(Math.random() * 50),
+        summariesGenerated: Math.floor(Math.random() * 30),
       },
     }
-  }
+
+    // Store user in localStorage for persistence
+    localStorage.setItem("news-summarizer-user", JSON.stringify(user))
+
+    return { success: true, user }
+  },
+
+  // Mock logout
+  async logout(): Promise<{ success: boolean }> {
+    // Simulate API delay
+    await new Promise((resolve) => setTimeout(resolve, 500))
+
+    // Clear user from localStorage
+    localStorage.removeItem("news-summarizer-user")
+
+    return { success: true }
+  },
+
+  // Get current user from localStorage
+  getCurrentUser(): User | null {
+    if (typeof window === "undefined") return null
+
+    const userJson = localStorage.getItem("news-summarizer-user")
+    if (!userJson) return null
+
+    try {
+      return JSON.parse(userJson) as User
+    } catch (error) {
+      console.error("Failed to parse user from localStorage:", error)
+      return null
+    }
+  },
+
+  // Update user preferences
+  async updateUserPreferences(
+    preferences: Partial<User["preferences"]>,
+  ): Promise<{ success: boolean; user?: User; error?: string }> {
+    // Simulate API delay
+    await new Promise((resolve) => setTimeout(resolve, 800))
+
+    const currentUser = this.getCurrentUser()
+    if (!currentUser) {
+      return { success: false, error: "Not logged in" }
+    }
+
+    const updatedUser: User = {
+      ...currentUser,
+      preferences: {
+        ...currentUser.preferences,
+        ...preferences,
+      },
+    }
+
+    // Update user in localStorage
+    localStorage.setItem("news-summarizer-user", JSON.stringify(updatedUser))
+
+    return { success: true, user: updatedUser }
+  },
 }
 

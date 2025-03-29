@@ -11,8 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
-import { AlertCircle, ArrowLeft, BookOpen, Check, Link, Loader2, Save, Sparkles } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { ArrowLeft, BookOpen, Save, Sparkles } from "lucide-react"
 
 export default function ProfilePage() {
   const { user, isLoading, logout, updatePreferences } = useAuth()
@@ -22,9 +21,6 @@ export default function ProfilePage() {
   const [selectedSources, setSelectedSources] = useState<string[]>([])
   const [emailDigest, setEmailDigest] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [inoreaderConnected, setInoreaderConnected] = useState(false)
-  const [isConnecting, setIsConnecting] = useState(false)
-  const [isChecking, setIsChecking] = useState(true)
 
   // Redirect if not logged in
   useEffect(() => {
@@ -39,119 +35,8 @@ export default function ProfilePage() {
       setSelectedCategories(user.preferences.categories)
       setSelectedSources(user.preferences.sources)
       setEmailDigest(user.preferences.emailDigest)
-      
-      // Check if Inoreader is connected
-      checkInoreaderConnection()
     }
   }, [user])
-
-  // Check if Inoreader is connected
-  const checkInoreaderConnection = async () => {
-    if (!user) return
-    
-    try {
-      const response = await fetch('/api/auth/inoreader', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.id}`,
-          'X-User-Email': user.email
-        },
-        body: JSON.stringify({})
-      })
-      
-      if (response.ok) {
-        const data = await response.json()
-        setInoreaderConnected(data.connected)
-      }
-    } catch (error) {
-      console.error('Failed to check Inoreader connection:', error)
-    } finally {
-      setIsChecking(false)
-    }
-  }
-
-  // Handle connect to Inoreader
-  const handleConnectInoreader = async () => {
-    if (!user) return
-    
-    setIsConnecting(true)
-    
-    try {
-      // Include authentication information in request
-      const response = await fetch('/api/auth/inoreader', {
-        headers: {
-          'Authorization': `Bearer ${user.id}`,
-          'X-User-Email': user.email
-        }
-      })
-      
-      if (response.ok) {
-        const { authUrl } = await response.json()
-        // Redirect to Inoreader auth page
-        window.location.href = authUrl
-      } else {
-        const error = await response.json()
-        toast({
-          title: 'Connection Error',
-          description: error.error || 'Failed to connect to Inoreader',
-          variant: 'destructive'
-        })
-      }
-    } catch (error) {
-      console.error('Inoreader connection error:', error)
-      toast({
-        title: 'Connection Error',
-        description: 'Failed to initiate Inoreader connection',
-        variant: 'destructive'
-      })
-    } finally {
-      setIsConnecting(false)
-    }
-  }
-  
-  // Handle disconnect from Inoreader
-  const handleDisconnectInoreader = async () => {
-    if (!user) return
-    
-    setIsConnecting(true)
-    
-    try {
-      const response = await fetch('/api/auth/inoreader', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${user.id}`,
-          'X-User-Email': user.email
-        },
-        body: JSON.stringify({ action: 'disconnect' })
-      })
-      
-      if (response.ok) {
-        setInoreaderConnected(false)
-        toast({
-          title: 'Success',
-          description: 'Disconnected from Inoreader',
-        })
-      } else {
-        const error = await response.json()
-        toast({
-          title: 'Disconnection Error',
-          description: error.error || 'Failed to disconnect from Inoreader',
-          variant: 'destructive'
-        })
-      }
-    } catch (error) {
-      console.error('Inoreader disconnection error:', error)
-      toast({
-        title: 'Disconnection Error',
-        description: 'Failed to disconnect from Inoreader',
-        variant: 'destructive'
-      })
-    } finally {
-      setIsConnecting(false)
-    }
-  }
 
   if (isLoading || !user) {
     return (
@@ -273,70 +158,6 @@ export default function ProfilePage() {
                     </div>
                   </div>
                 </div>
-                
-                <Separator className="bg-sumi/10" />
-                
-                <div className="space-y-4">
-                  <h3 className="text-md font-medium text-sumi/80">Connected Accounts</h3>
-                  
-                  <div className="space-y-2">
-                    <p className="text-sm text-sumi/70">Inoreader</p>
-                    
-                    {isChecking ? (
-                      <div className="flex items-center space-x-2 text-sm text-sumi/60">
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        <span>Checking connection...</span>
-                      </div>
-                    ) : inoreaderConnected ? (
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2 text-sm text-emerald-600">
-                          <Check className="h-4 w-4" />
-                          <span>Connected</span>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={handleDisconnectInoreader}
-                          disabled={isConnecting}
-                          className="text-xs h-8"
-                        >
-                          {isConnecting ? (
-                            <>
-                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                              <span>Disconnecting...</span>
-                            </>
-                          ) : (
-                            "Disconnect"
-                          )}
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleConnectInoreader}
-                        disabled={isConnecting}
-                        className="text-xs h-8 text-indigo border-indigo/30 hover:bg-indigo/10"
-                      >
-                        {isConnecting ? (
-                          <>
-                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                            <span>Connecting...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Link className="h-3 w-3 mr-1" />
-                            <span>Connect Inoreader</span>
-                          </>
-                        )}
-                      </Button>
-                    )}
-                    
-                    <p className="text-xs text-sumi/50 mt-1">
-                      Connect your Inoreader account to fetch your subscribed articles and feeds
-                    </p>
-                  </div>
-                </div>
               </CardContent>
               <CardFooter>
                 <Button
@@ -370,12 +191,6 @@ export default function ProfilePage() {
                       className="text-xs data-[state=active]:bg-indigo data-[state=active]:text-kinari"
                     >
                       Sources
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="connections"
-                      className="text-xs data-[state=active]:bg-indigo data-[state=active]:text-kinari"
-                    >
-                      Connections
                     </TabsTrigger>
                     <TabsTrigger
                       value="notifications"
@@ -432,78 +247,6 @@ export default function ProfilePage() {
                           </Label>
                         </div>
                       ))}
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="connections" className="space-y-4">
-                    <div className="text-sm text-sumi/70 mb-4">Connect external news services:</div>
-                    
-                    <div className="space-y-4">
-                      <div className="p-4 border border-sumi/10 rounded-md">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h3 className="text-md font-medium text-sumi/90 mb-1">Inoreader</h3>
-                            <p className="text-sm text-sumi/70 mb-3">
-                              Connect to your Inoreader account to import your subscribed feeds
-                            </p>
-                          </div>
-                          
-                          {isChecking ? (
-                            <Button size="sm" variant="outline" disabled className="h-8">
-                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                              <span>Checking...</span>
-                            </Button>
-                          ) : inoreaderConnected ? (
-                            <div className="flex items-center space-x-3">
-                              <div className="flex items-center text-xs text-emerald-600">
-                                <Check className="h-3 w-3 mr-1" />
-                                <span>Connected</span>
-                              </div>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={handleDisconnectInoreader}
-                                disabled={isConnecting}
-                                className="text-xs h-8"
-                              >
-                                {isConnecting ? (
-                                  <>
-                                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                    <span>Disconnecting...</span>
-                                  </>
-                                ) : (
-                                  "Disconnect"
-                                )}
-                              </Button>
-                            </div>
-                          ) : (
-                            <Button
-                              size="sm"
-                              onClick={handleConnectInoreader}
-                              disabled={isConnecting}
-                              className="h-8 bg-indigo hover:bg-indigo/90"
-                            >
-                              {isConnecting ? (
-                                <>
-                                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                  <span>Connecting...</span>
-                                </>
-                              ) : (
-                                "Connect"
-                              )}
-                            </Button>
-                          )}
-                        </div>
-                        
-                        {inoreaderConnected && (
-                          <Alert variant="default" className="mt-3 bg-emerald-50 border-emerald-200">
-                            <Check className="h-4 w-4 text-emerald-600" />
-                            <AlertDescription className="text-emerald-800 text-xs">
-                              Your Inoreader account is connected. Your feed will include articles from your subscriptions.
-                            </AlertDescription>
-                          </Alert>
-                        )}
-                      </div>
                     </div>
                   </TabsContent>
 
