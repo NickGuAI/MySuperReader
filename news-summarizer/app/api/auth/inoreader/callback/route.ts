@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { inoreaderService } from "@/lib/external-services/inoreader-service"
 import { authService } from "@/lib/external-services/auth-service"
 import { supabase } from "@/lib/external-services/supabase"
+import { supabaseAdmin } from "@/lib/external-services/supabase-admin"
 
 /**
  * API route to handle Inoreader OAuth2.0 callback
@@ -90,25 +91,28 @@ export async function GET(req: NextRequest) {
     
     console.log('[Inoreader Callback] Successfully authenticated with Inoreader');
     
+    // Store tokens directly in the database using the admin client
+    // This bypasses RLS and allows us to store tokens without a user session
+    console.log('[Inoreader Callback] Storing tokens in Supabase...');
+    const { error: upsertError } = await supabaseAdmin
+      .from('inoreader')
+      .upsert({
+        user_id: userId,
+        access_token: result.tokens.access_token,
+        refresh_token: result.tokens.refresh_token,
+        expires_at: result.tokens.expires_at,
+        created_at: new Date().toISOString()
+      });
+    
+    if (upsertError) {
+      console.error('[Inoreader Callback] Failed to store tokens in Supabase:', upsertError);
+      // Continue with redirect but log the error
+    } else {
+      console.log('[Inoreader Callback] Tokens successfully stored in Supabase');
+    }
+    
     // Create response with redirect to profile page
     const response = NextResponse.redirect(new URL('/profile', req.url));
-    
-    // Store tokens in cookies instead of database
-    const tokenData = {
-      userId,
-      ...result.tokens
-    };
-    
-    // Set cookies with the tokens (encrypted and HTTP-only)
-    response.cookies.set({
-      name: 'inoreader_pending_tokens',
-      value: btoa(JSON.stringify(tokenData)),
-      maxAge: 86400, // 24 hours
-      path: '/',
-      httpOnly: true,
-      secure: false, // Set to true in production
-      sameSite: 'lax'
-    });
     
     // Clear the state cookie
     response.cookies.set({
